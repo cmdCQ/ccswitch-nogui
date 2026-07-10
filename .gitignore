@@ -1,0 +1,7 @@
+# 含 API Key / 私密配置，禁止提交
+cc-restore-deepseek.py
+cc-profiles.json
+*.key
+.env
+__pycache__/
+*.pyc
