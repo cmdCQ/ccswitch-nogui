@@ -117,9 +117,9 @@ def print_providers(manager: ProviderManager) -> None:
         mark = "*" if provider.id == current else " "
         print(
             f"  {mark} {index:>2}. "
-            f"{cell(provider.name, 18)} "
+            f"{cell(provider.name, 16)} "
             f"{cell(category_label(provider.category), 8)} "
-            f"{cell(provider_model_label(provider), 22)} "
+            f"{cell(provider_model_label(provider), 18)} "
             f"key={provider_key_label(provider)}"
         )
         print(f"       id={provider.id}  url={provider.base_url() or '官方登录'}")
