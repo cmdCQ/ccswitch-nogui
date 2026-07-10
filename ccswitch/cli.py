@@ -116,13 +116,12 @@ def print_providers(manager: ProviderManager) -> None:
     for index, provider in enumerate(providers, 1):
         mark = "*" if provider.id == current else " "
         print(
-            f"  {mark} {index:>2}. "
-            f"{cell(provider.name, 16)} "
-            f"{cell(category_label(provider.category), 8)} "
-            f"{cell(provider_model_label(provider), 18)} "
+            f"  {mark} {index}. {provider.name} "
+            f"[{category_label(provider.category)}] "
+            f"{provider_model_label(provider)} "
             f"key={provider_key_label(provider)}"
         )
-        print(f"       id={provider.id}  url={provider.base_url() or '官方登录'}")
+        print(f"    id={provider.id} url={provider.base_url() or '官方登录'}")
 
 
 def provider_by_number(manager: ProviderManager, number: int) -> Provider:

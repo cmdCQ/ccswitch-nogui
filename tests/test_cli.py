@@ -149,7 +149,7 @@ class CliTests(unittest.TestCase):
             self.assertIn("DeepSeek", names)
             self.assertIn("AWS Bedrock (AKSK)", names)
             self.assertGreaterEqual(len(data["presets"]), 50)
-    def test_list_uses_table_layout(self) -> None:
+    def test_list_uses_compact_layout(self) -> None:
         tmp, home = self.make_home()
         with tmp:
             add = run_cli(
@@ -168,9 +168,8 @@ class CliTests(unittest.TestCase):
             result = run_cli(home, "list")
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("配置列表：", result.stdout)
-            self.assertIn("*  1.", result.stdout)
-            self.assertIn("自定义", result.stdout)
-            self.assertIn("DeepSeek Test", result.stdout)
+            self.assertIn("* 1. DeepSeek Test [自定义] deepseek-v4-pro key=*******", result.stdout)
+            self.assertIn("    id=deepseek-test url=https://api.deepseek.com/anthropic", result.stdout)
 
     def test_presets_uses_table_layout(self) -> None:
         tmp, home = self.make_home()
