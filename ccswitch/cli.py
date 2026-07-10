@@ -39,15 +39,86 @@ def choose_number(prompt: str, minimum: int, maximum: int) -> int | None:
     return None
 
 
+def clip(value: object, width: int) -> str:
+    text = str(value or "-")
+    if len(text) <= width:
+        return text
+    if width <= 3:
+        return text[:width]
+    return text[: width - 3] + "..."
+
+
+def cell(value: object, width: int, align: str = "<") -> str:
+    text = clip(value, width)
+    if align == ">":
+        return text.rjust(width)
+    return text.ljust(width)
+
+
+def provider_key_label(provider: Provider) -> str:
+    if provider.meta.get("requiresOAuth"):
+        return "OAuth"
+    if provider.is_official():
+        return "官方登录"
+    return mask_secret(provider.api_key())
+
+
+def provider_model_label(provider: Provider) -> str:
+    return provider.model() or ("官方登录" if provider.is_official() else "-")
+
+
+def print_current_summary(manager: ProviderManager) -> None:
+    provider = manager.current_provider()
+    if provider is None:
+        print(" 当前配置: (无)")
+        return
+    print(
+        " 当前配置: "
+        f"{provider.name} ({provider.id})  "
+        f"模型={provider_model_label(provider)}  "
+        f"密钥={provider_key_label(provider)}"
+    )
+
+
 def print_providers(manager: ProviderManager) -> None:
     providers = manager.list_providers()
     current = manager.store.current
     if not providers:
-        print("(还没有任何供应商)")
+        print(" 还没有保存任何供应商。可使用 新增供应商 或 import-live 导入当前配置。")
         return
+
+    print(" * = 当前使用")
+    print(
+        "   "
+        + cell("编号", 4, ">")
+        + " "
+        + cell("ID", 20)
+        + " "
+        + cell("名称", 22)
+        + " "
+        + cell("分类", 13)
+        + " "
+        + cell("模型", 24)
+        + " "
+        + cell("密钥", 14)
+    )
+    print("   " + "-" * 102)
     for index, provider in enumerate(providers, 1):
         mark = "*" if provider.id == current else " "
-        print(f" {mark} {index:2d}) {provider.id:<22} {provider.summary()}")
+        print(
+            f" {mark} "
+            + cell(index, 4, ">")
+            + " "
+            + cell(provider.id, 20)
+            + " "
+            + cell(provider.name, 22)
+            + " "
+            + cell(provider.category or "custom", 13)
+            + " "
+            + cell(provider_model_label(provider), 24)
+            + " "
+            + cell(provider_key_label(provider), 14)
+        )
 
 
 def provider_by_number(manager: ProviderManager, number: int) -> Provider:
@@ -68,7 +139,7 @@ def pick_preset() -> dict[str, Any] | None:
     for index, preset in enumerate(presets, 1):
         settings = preset.get("settingsConfig") if isinstance(preset.get("settingsConfig"), dict) else {}
         env = settings.get("env") if isinstance(settings.get("env"), dict) else {}
-        base_url = env.get("ANTHROPIC_BASE_URL") or preset.get("base_url") or "official-login"
+        base_url = env.get("ANTHROPIC_BASE_URL") or preset.get("base_url") or "官方登录"
         category = preset.get("category") or ("official" if preset.get("isOfficial") else "custom")
         print(f" {index:2d}) {preset.get('name', 'Custom'):<28} {category:<12} {base_url}")
     print("  0) 手动创建")
@@ -153,25 +224,27 @@ def build_provider_interactive(manager: ProviderManager, old: Provider | None = 
 def interactive_menu() -> int:
     manager = ProviderManager()
     while True:
-        print("\n" + "=" * 72)
-        print(" Claude Code 供应商切换  (ccswitch-nogui)")
-        print("=" * 72)
-        print(f" 数据文件: {store_path()}")
-        print(f" Live 配置: {claude_settings_path()}")
-        print("-" * 72)
-        print_providers(manager)
         providers = manager.list_providers()
         n = len(providers)
-        print("-" * 72)
+        print("\n" + "=" * 104)
+        print(" Claude Code 供应商切换  ccswitch-nogui")
+        print("=" * 104)
+        print_current_summary(manager)
+        print(f" 数据文件: {store_path()}")
+        print(f" Live配置: {claude_settings_path()}")
+        print("-" * 104)
+        print_providers(manager)
+        print("-" * 104)
+        print(" 操作")
         if n:
-            print(f" 1-{n}) 切换到对应供应商")
-        print(f" {n + 1}) 新增供应商")
-        print(f" {n + 2}) 修改供应商")
-        print(f" {n + 3}) 删除供应商")
-        print(f" {n + 4}) 从当前 ~/.claude/settings.json 导入")
-        print(f" {n + 5}) 添加 Claude 官方登录预设")
-        print(f" {n + 6}) 提取当前供应商的通用配置片段")
-        print(" 0) 退出")
+            print(f"  1-{n:<3} 切换到对应供应商")
+        print(f"  {n + 1:<4} 新增供应商")
+        print(f"  {n + 2:<4} 修改供应商")
+        print(f"  {n + 3:<4} 删除供应商")
+        print(f"  {n + 4:<4} 从当前 ~/.claude/settings.json 导入")
+        print(f"  {n + 5:<4} 添加 Claude 官方登录预设")
+        print(f"  {n + 6:<4} 提取当前供应商的通用配置片段")
+        print("  0    退出")
         choice = choose_number("请选择", 0, n + 6)
         if choice is None:
             continue
@@ -181,13 +254,13 @@ def interactive_menu() -> int:
             if 1 <= choice <= n:
                 provider = provider_by_number(manager, choice)
                 manager.switch(provider.id)
-                print(f"[OK] 已切换到 {provider.name}")
+                print(f"[OK] 已切换到 {provider.name} ({provider.id})")
                 print("[!] 如当前 Claude Code 进程未热读 env，请重启/新开会话。")
             elif choice == n + 1:
                 provider = build_provider_interactive(manager)
                 if provider:
                     manager.add_provider(provider, switch=ask("现在切换到它吗? (1=是 / 回车=否)") == "1")
-                    print(f"[OK] 已新增 {provider.name}")
+                    print(f"[OK] 已新增 {provider.name} ({provider.id})")
             elif choice == n + 2:
                 if not providers:
                     print("[X] 没有可修改的供应商")
@@ -199,7 +272,7 @@ def interactive_menu() -> int:
                 provider = build_provider_interactive(manager, old)
                 if provider:
                     manager.update_provider(old.id, provider)
-                    print(f"[OK] 已更新 {provider.name}")
+                    print(f"[OK] 已更新 {provider.name} ({provider.id})")
             elif choice == n + 3:
                 if not providers:
                     print("[X] 没有可删除的供应商")
@@ -211,14 +284,14 @@ def interactive_menu() -> int:
                 confirm = ask(f"确认删除 {provider.name}? 输入 delete 确认")
                 if confirm == "delete":
                     manager.delete_provider(provider.id)
-                    print(f"[OK] 已删除 {provider.name}")
+                    print(f"[OK] 已删除 {provider.name} ({provider.id})")
             elif choice == n + 4:
                 name = ask("导入名称", "default")
                 provider = manager.import_live(name=name)
-                print(f"[OK] 已导入并切换到 {provider.name}")
+                print(f"[OK] 已导入并切换到 {provider.name} ({provider.id})")
             elif choice == n + 5:
                 provider = manager.seed_official()
-                print(f"[OK] 已存在/新增 {provider.name}")
+                print(f"[OK] 已存在/新增 {provider.name} ({provider.id})")
             elif choice == n + 6:
                 common = manager.extract_common_config()
                 print(format_json(common))
@@ -260,11 +333,35 @@ def cmd_presets(args: argparse.Namespace) -> int:
     if args.json:
         print(format_json({"presets": presets}))
         return 0
+    print(
+        cell("编号", 4, ">")
+        + " "
+        + cell("名称", 28)
+        + " "
+        + cell("分类", 13)
+        + " "
+        + cell("模型", 24)
+        + " "
+        + cell("地址", 44)
+    )
+    print("-" * 117)
     for index, preset in enumerate(presets, 1):
         settings = preset.get("settingsConfig") if isinstance(preset.get("settingsConfig"), dict) else {}
         env = settings.get("env") if isinstance(settings.get("env"), dict) else {}
-        base_url = env.get("ANTHROPIC_BASE_URL") or preset.get("base_url") or "official-login"
-        print(f"{index:2d}) {preset.get('name', 'Custom'):<28} {base_url}")
+        base_url = env.get("ANTHROPIC_BASE_URL") or preset.get("base_url") or "官方登录"
+        model = env.get("ANTHROPIC_MODEL") or env.get("ANTHROPIC_DEFAULT_SONNET_MODEL") or "-"
+        category = preset.get("category") or ("official" if preset.get("isOfficial") else "custom")
+        print(
+            cell(index, 4, ">")
+            + " "
+            + cell(preset.get("name", "Custom"), 28)
+            + " "
+            + cell(category, 13)
+            + " "
+            + cell(model, 24)
+            + " "
+            + cell(base_url, 44)
+        )
     return 0
 
 
@@ -351,7 +448,7 @@ def cmd_common(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Claude Code provider switcher without GUI")
+    parser = argparse.ArgumentParser(description="Claude Code 供应商切换工具（无 GUI）")
     sub = parser.add_subparsers(dest="command")
 
     p = sub.add_parser("list", help="列出供应商")
@@ -413,11 +510,11 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    if not args.command:
-        return interactive_menu()
     try:
+        if not args.command:
+            return interactive_menu()
         return args.func(args)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, EOFError):
         print("\n已取消")
         return 130
     except Exception as exc:

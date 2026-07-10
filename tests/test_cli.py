@@ -149,6 +149,69 @@ class CliTests(unittest.TestCase):
             self.assertIn("DeepSeek", names)
             self.assertIn("AWS Bedrock (AKSK)", names)
             self.assertGreaterEqual(len(data["presets"]), 50)
+    def test_list_uses_table_layout(self) -> None:
+        tmp, home = self.make_home()
+        with tmp:
+            add = run_cli(
+                home,
+                "add",
+                "--name",
+                "DeepSeek Test",
+                "--base-url",
+                "https://api.deepseek.com/anthropic",
+                "--api-key",
+                "sk-test",
+                "--model",
+                "deepseek-v4-pro",
+            )
+            self.assertEqual(add.returncode, 0, add.stderr)
+            result = run_cli(home, "list")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("* = 当前使用", result.stdout)
+            self.assertIn("分类", result.stdout)
+            self.assertIn("模型", result.stdout)
+            self.assertIn("DeepSeek Test", result.stdout)
+
+    def test_presets_uses_table_layout(self) -> None:
+        tmp, home = self.make_home()
+        with tmp:
+            result = run_cli(home, "presets")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("分类", result.stdout)
+            self.assertIn("地址", result.stdout)
+            self.assertIn("Claude Official", result.stdout)
+    def test_interactive_ctrl_c_exits_without_traceback(self) -> None:
+        tmp, home = self.make_home()
+        with tmp:
+            env = os.environ.copy()
+            env["CCSWITCH_NOGUI_HOME"] = str(home)
+            env["PYTHONPATH"] = str(ROOT)
+            script = """
+import os
+import signal
+import sys
+sys.path.insert(0, os.environ['PYTHONPATH'])
+from ccswitch.cli import main
+
+def stop(*_args):
+    raise KeyboardInterrupt
+signal.signal(signal.SIGALRM, stop)
+signal.alarm(1)
+raise SystemExit(main([]))
+"""
+            result = subprocess.run(
+                [sys.executable, "-c", script],
+                cwd=str(ROOT),
+                env=env,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+                timeout=5,
+            )
+            self.assertEqual(result.returncode, 130)
+            self.assertIn("已取消", result.stdout)
+            self.assertNotIn("Traceback", result.stderr + result.stdout)
 
 
 if __name__ == "__main__":
