@@ -267,6 +267,10 @@ rg -n 'github_[p]at_|g[h]p_|g[h]o_|g[h]u_|g[h]s_|g[h]r_' . --glob '!.git/**' --g
 rg -n 's[k]-' . --glob '!.git/**' --glob '!__pycache__/**'
 ```
 
+## Contributors
+
+- [farion1231](https://github.com/farion1231) / Jason Young - author of [CC Switch](https://github.com/farion1231/cc-switch/), the upstream project whose Claude Code provider presets and provider-management model this project follows.
+
 ## License
 
 MIT
