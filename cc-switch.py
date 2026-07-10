@@ -82,20 +82,29 @@ def pick_preset():
     presets = load_presets()
     if not presets:
         return {}
-    print("\n 选择供应商预设（会自动带好地址和模型，你只需填 Key）：")
+    print("\n" + "-" * 52)
+    print(" 第 1 步：选择供应商预设")
+    print(" （选中后会自动填好 地址 和 模型，你只需再填 API Key）")
+    print("-" * 52)
     for i, p in enumerate(presets, 1):
-        tag = p["base_url"] or "自定义全部手填"
+        tag = p["base_url"] or "（全部手动填写）"
         print("  %2d) %-24s %s" % (i, p["name"], tag))
-    idx = ask("\n 选择编号（回车=自定义全部手填）")
+    print("   0) 不用预设，全部手动填写")
+    idx = ask("\n 请输入预设编号")
     if idx.isdigit() and 1 <= int(idx) <= len(presets):
-        return presets[int(idx)-1]
+        chosen = presets[int(idx) - 1]
+        print(" → 已选【%s】" % chosen["name"])
+        return chosen
     return {}
 
 def input_profile(old=None):
+    # 修改已有配置时不再选预设；新增时先选预设
+    if old:
+        base = old
+    else:
+        base = pick_preset()
     old = old or {}
-    # 新增时先选预设作为默认值来源
-    base = old if old else pick_preset()
-    print("\n（直接回车 = 使用中括号里的默认值）")
+    print("\n 第 2 步：填写配置（直接回车 = 使用中括号里的默认值）")
     name = ask("档案名称", base.get("name") or old.get("name"))
     base_url = ask("BASE_URL", base.get("base_url") or "https://api.deepseek.com/anthropic")
     auth = ask("API Key", old.get("auth_token"))
@@ -112,6 +121,7 @@ def input_profile(old=None):
 
 def menu():
     profiles = load_profiles()
+    n = len(profiles)
     print("\n" + "=" * 52)
     print(" Claude Code 供应商切换  (ccswitch-nogui)")
     print("=" * 52)
@@ -120,41 +130,57 @@ def menu():
         for i, p in enumerate(profiles, 1):
             print("  %d) %-18s %-16s key=%s" % (i, p["name"], p["big"], mask(p["auth_token"])))
     else:
-        print(" (还没有任何配置，按 n 新增)")
+        print(" (还没有任何配置)")
     print("-" * 52)
-    print(" 数字 = 切换到该配置   n=新增  e=修改  d=删除  q=退出")
-    choice = input(" 请选择: ").strip().lower()
+    print(" 请输入数字：")
+    if profiles:
+        print("  1-%d  = 切换到对应配置" % n)
+    print("  %d)  ➕ 新增配置" % (n + 1))
+    if profiles:
+        print("  %d)  ✏️  修改配置" % (n + 2))
+        print("  %d)  🗑  删除配置" % (n + 3))
+    print("  0)  退出")
+    choice = input(" 请选择: ").strip()
 
-    if choice in ("q", ""):
+    if not choice.isdigit():
+        print("✖ 请输入数字")
+        return menu()
+    c = int(choice)
+
+    if c == 0:
         return
-    if choice == "n":
+    # 切换
+    if 1 <= c <= n:
+        apply_profile(profiles[c - 1])
+        return
+    # 新增
+    if c == n + 1:
         p = input_profile()
         if p:
             profiles.append(p); save_profiles(profiles)
             print("✅ 已保存【%s】" % p["name"])
-            if ask("现在就切换到它吗? (y/N)", "N").lower() == "y":
+            if ask("现在就切换到它吗? (1=是 / 回车=否)") == "1":
                 apply_profile(p)
         return menu()
-    if choice == "e":
+    # 修改
+    if c == n + 2 and profiles:
         idx = ask("修改哪个编号")
-        if idx.isdigit() and 1 <= int(idx) <= len(profiles):
-            p = input_profile(profiles[int(idx)-1])
+        if idx.isdigit() and 1 <= int(idx) <= n:
+            p = input_profile(profiles[int(idx) - 1])
             if p:
-                profiles[int(idx)-1] = p; save_profiles(profiles); print("✅ 已更新")
+                profiles[int(idx) - 1] = p; save_profiles(profiles); print("✅ 已更新")
         else:
             print("✖ 编号无效")
         return menu()
-    if choice == "d":
+    # 删除
+    if c == n + 3 and profiles:
         idx = ask("删除哪个编号")
-        if idx.isdigit() and 1 <= int(idx) <= len(profiles):
-            gone = profiles.pop(int(idx)-1); save_profiles(profiles)
+        if idx.isdigit() and 1 <= int(idx) <= n:
+            gone = profiles.pop(int(idx) - 1); save_profiles(profiles)
             print("🗑 已删除【%s】" % gone["name"])
         else:
             print("✖ 编号无效")
         return menu()
-    if choice.isdigit() and 1 <= int(choice) <= len(profiles):
-        apply_profile(profiles[int(choice)-1])
-        return
     print("✖ 输入无效")
     return menu()
 
