@@ -8,11 +8,11 @@
 
 Claude Code 的供应商配置存放在 `~/.claude/settings.json` 的 `env` 块里（`ANTHROPIC_BASE_URL` / `ANTHROPIC_AUTH_TOKEN` / 各模型名）。切换供应商本质上就是改这几个键。本工具帮你：
 
-- 📋 用内置预设快速新增配置（自动带好 base_url 和模型名，**你只需填 API Key**）
-- 🔀 在保存好的多个配置之间一键切换
-- ✏️ 新增 / 修改 / 删除配置
-- 💾 每次改动前**自动备份** `settings.json` 到 `~/.claude/backups/`
-- 🛡 只改 `env` 里供应商相关的键，你的**权限、主题等其它配置原样保留**
+- 用内置预设快速新增配置（自动带好 base_url 和模型名，**你只需填 API Key**）
+- 在保存好的多个配置之间一键切换
+- 新增 / 修改 / 删除配置
+- 每次改动前**自动备份** `settings.json` 到 `~/.claude/backups/`
+- 只改 `env` 里供应商相关的键，你的**权限、主题等其它配置原样保留**
 
 ## 使用
 
@@ -27,14 +27,14 @@ python3 cc-switch.py
  Claude Code 供应商切换  (ccswitch-nogui)
 ====================================================
  你的配置：
-  1) DeepSeek           deepseek-v4-pro   key=sk-xxxx…abcd
-  2) Kimi (Moonshot)    kimi-k2.7-code    key=sk-yyyy…efgh
+  1) DeepSeek           deepseek-v4-pro   key=sk-xxxx...abcd
+  2) Kimi (Moonshot)    kimi-k2.7-code    key=sk-yyyy...efgh
 ----------------------------------------------------
  请输入数字：
   1-2  = 切换到对应配置
-  3)  ➕ 新增配置
-  4)  ✏️  修改配置
-  5)  🗑  删除配置
+  3)  新增配置
+  4)  修改配置
+  5)  删除配置
   0)  退出
 ```
 
