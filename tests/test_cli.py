@@ -167,9 +167,9 @@ class CliTests(unittest.TestCase):
             self.assertEqual(add.returncode, 0, add.stderr)
             result = run_cli(home, "list")
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("* = 当前使用", result.stdout)
-            self.assertIn("分类", result.stdout)
-            self.assertIn("模型", result.stdout)
+            self.assertIn("配置列表：", result.stdout)
+            self.assertIn("*  1.", result.stdout)
+            self.assertIn("自定义", result.stdout)
             self.assertIn("DeepSeek Test", result.stdout)
 
     def test_presets_uses_table_layout(self) -> None:
@@ -177,8 +177,8 @@ class CliTests(unittest.TestCase):
         with tmp:
             result = run_cli(home, "presets")
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("分类", result.stdout)
-            self.assertIn("地址", result.stdout)
+            self.assertIn("预设列表：", result.stdout)
+            self.assertIn("官方", result.stdout)
             self.assertIn("Claude Official", result.stdout)
     def test_interactive_ctrl_c_exits_without_traceback(self) -> None:
         tmp, home = self.make_home()

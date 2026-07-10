@@ -41,18 +41,43 @@ def choose_number(prompt: str, minimum: int, maximum: int) -> int | None:
 
 def clip(value: object, width: int) -> str:
     text = str(value or "-")
-    if len(text) <= width:
+    if display_width(text) <= width:
         return text
     if width <= 3:
         return text[:width]
-    return text[: width - 3] + "..."
+    result = ""
+    for ch in text:
+        if display_width(result + ch + "...") > width:
+            break
+        result += ch
+    return result + "..."
+
+
+def display_width(text: str) -> int:
+    width = 0
+    for ch in text:
+        width += 2 if ord(ch) > 127 else 1
+    return width
 
 
 def cell(value: object, width: int, align: str = "<") -> str:
     text = clip(value, width)
+    padding = max(width - display_width(text), 0)
     if align == ">":
-        return text.rjust(width)
-    return text.ljust(width)
+        return " " * padding + text
+    return text + " " * padding
+
+
+def category_label(category: str | None) -> str:
+    labels = {
+        "official": "官方",
+        "custom": "自定义",
+        "aggregator": "聚合",
+        "third_party": "第三方",
+        "cn_official": "国内官方",
+        "cloud_provider": "云厂商",
+    }
+    return labels.get(category or "custom", category or "自定义")
 
 
 def provider_key_label(provider: Provider) -> str:
@@ -84,41 +109,20 @@ def print_providers(manager: ProviderManager) -> None:
     providers = manager.list_providers()
     current = manager.store.current
     if not providers:
-        print(" 还没有保存任何供应商。可使用 新增供应商 或 import-live 导入当前配置。")
+        print("  还没有保存任何供应商。可新增供应商，或从当前 ~/.claude/settings.json 导入。")
         return
 
-    print(" * = 当前使用")
-    print(
-        "   "
-        + cell("编号", 4, ">")
-        + " "
-        + cell("ID", 20)
-        + " "
-        + cell("名称", 22)
-        + " "
-        + cell("分类", 13)
-        + " "
-        + cell("模型", 24)
-        + " "
-        + cell("密钥", 14)
-    )
-    print("   " + "-" * 102)
+    print("配置列表：")
     for index, provider in enumerate(providers, 1):
         mark = "*" if provider.id == current else " "
         print(
-            f" {mark} "
-            + cell(index, 4, ">")
-            + " "
-            + cell(provider.id, 20)
-            + " "
-            + cell(provider.name, 22)
-            + " "
-            + cell(provider.category or "custom", 13)
-            + " "
-            + cell(provider_model_label(provider), 24)
-            + " "
-            + cell(provider_key_label(provider), 14)
+            f"  {mark} {index:>2}. "
+            f"{cell(provider.name, 18)} "
+            f"{cell(category_label(provider.category), 8)} "
+            f"{cell(provider_model_label(provider), 22)} "
+            f"key={provider_key_label(provider)}"
         )
+        print(f"       id={provider.id}  url={provider.base_url() or '官方登录'}")
 
 
 def provider_by_number(manager: ProviderManager, number: int) -> Provider:
@@ -226,18 +230,20 @@ def interactive_menu() -> int:
     while True:
         providers = manager.list_providers()
         n = len(providers)
-        print("\n" + "=" * 104)
+        print("\n" + "=" * 72)
         print(" Claude Code 供应商切换  ccswitch-nogui")
-        print("=" * 104)
+        print("=" * 72)
         print_current_summary(manager)
         print(f" 数据文件: {store_path()}")
         print(f" Live配置: {claude_settings_path()}")
-        print("-" * 104)
+        print("-" * 72)
         print_providers(manager)
-        print("-" * 104)
-        print(" 操作")
-        if n:
-            print(f"  1-{n:<3} 切换到对应供应商")
+        print("-" * 72)
+        print("操作：")
+        if n == 1:
+            print("  1    切换到该供应商")
+        elif n > 1:
+            print(f"  1-{n:<2} 切换到对应供应商")
         print(f"  {n + 1:<4} 新增供应商")
         print(f"  {n + 2:<4} 修改供应商")
         print(f"  {n + 3:<4} 删除供应商")
@@ -333,18 +339,7 @@ def cmd_presets(args: argparse.Namespace) -> int:
     if args.json:
         print(format_json({"presets": presets}))
         return 0
-    print(
-        cell("编号", 4, ">")
-        + " "
-        + cell("名称", 28)
-        + " "
-        + cell("分类", 13)
-        + " "
-        + cell("模型", 24)
-        + " "
-        + cell("地址", 44)
-    )
-    print("-" * 117)
+    print("预设列表：")
     for index, preset in enumerate(presets, 1):
         settings = preset.get("settingsConfig") if isinstance(preset.get("settingsConfig"), dict) else {}
         env = settings.get("env") if isinstance(settings.get("env"), dict) else {}
@@ -352,15 +347,11 @@ def cmd_presets(args: argparse.Namespace) -> int:
         model = env.get("ANTHROPIC_MODEL") or env.get("ANTHROPIC_DEFAULT_SONNET_MODEL") or "-"
         category = preset.get("category") or ("official" if preset.get("isOfficial") else "custom")
         print(
-            cell(index, 4, ">")
-            + " "
-            + cell(preset.get("name", "Custom"), 28)
-            + " "
-            + cell(category, 13)
-            + " "
-            + cell(model, 24)
-            + " "
-            + cell(base_url, 44)
+            f"  {index:>2}. "
+            f"{cell(preset.get('name', 'Custom'), 24)} "
+            f"{cell(category_label(category), 8)} "
+            f"{cell(model, 22)} "
+            f"{base_url}"
         )
     return 0
 
